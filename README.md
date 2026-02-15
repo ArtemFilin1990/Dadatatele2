@@ -26,6 +26,18 @@ STRICT_INN_CHECK=false
 LOG_LEVEL=INFO
 ```
 
+## Endpoint map
+- DaData `POST /suggestions/api/4_1/rs/findById/party`.
+- Checko:
+  - `GET /v2/company?key=...&inn=<10>`
+  - `GET /v2/entrepreneur?key=...&inn=<12>`
+  - `GET /v2/person?key=...&inn=<12>` (fallback)
+  - `GET /v2/finances?key=...&inn=...`
+  - `GET /v2/legal-cases?key=...&inn=...`
+  - `GET /v2/enforcements?key=...&inn=...`
+  - `GET /v2/inspections?key=...&inn=...`
+  - `GET /v2/contracts?key=...&inn=...`
+
 ## UX
 - `/start` и кнопки: `[🏁 Старт][👋 Привет]` + `[🔎 Проверить ИНН]`.
 - Валидация ИНН:
@@ -34,13 +46,6 @@ LOG_LEVEL=INFO
   - при `STRICT_INN_CHECK=true` — контрольная сумма.
 - После валидного ИНН: карточка + inline-разделы.
 - На каждом экране фиксированный нижний ряд: **[назад] [домой]**.
-
-## Разделы
-- Финансы: `/v2/finances`
-- Суды: `/v2/legal-cases`
-- Долги: `/v2/enforcements`
-- Проверки: `/v2/inspections`
-- Госзакупки: `/v2/contracts`
 
 ## Кэш
 SQLite TTL-кэш в `db/cache.sqlite`.

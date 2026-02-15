@@ -1,151 +1,65 @@
-# Telegram-бот: Проверка компаний по ИНН
+# Telegram-бот «Проверка контрагента» (aiogram v3)
 
-Бот для Telegram на Python (aiogram 3.x) с двумя режимами проверки контрагентов по ИНН через сервис DaData.
+Бот проверяет контрагента по ИНН и объединяет источники:
+- **Checko** — источник истины (идентификация/статус/адрес/правопреемник).
+- **DaData** — обогащение (контакты, быстрый паспорт).
+- **Локальные справочники** (`db/reference_data.sqlite`) — расшифровки кодов.
 
-## Возможности
-
-| Режим | Описание | Что нужно |
-|-------|----------|-----------|
-| **DaData напрямую** | Прямой HTTP-запрос к API DaData `findById/party`. Возвращает структурированную карточку с реквизитами, адресом, руководством, ОКВЭД, финансами, контактами, филиалами | `DADATA_API_KEY` |
-| **DaData через AI (MCP)** | Нейросеть (GPT-4.1-mini) анализирует компанию через MCP-сервер DaData и выдаёт человекочитаемый отчёт | `DADATA_API_KEY` + `DADATA_SECRET_KEY` + `OPENAI_API_KEY` |
-
-**Интерфейс:**
-- `/start` — приветствие + инлайн-меню выбора режима
-- Валидация ИНН: 10 цифр = юр. лицо, 12 цифр = ИП
-- Пакетная обработка: несколько ИНН через пробел, запятую или с новой строки
-- Кнопка «Назад в меню» после каждого результата
-
-## Структура проекта
-
-```
-inn_checker_bot/
-├── bot.py              # Точка входа, запуск polling
-├── config.py           # Загрузка .env, константы
-├── handlers.py         # Обработчики команд и FSM
-├── keyboards.py        # Инлайн-клавиатуры
-├── validators.py       # Валидация и парсинг ИНН
-├── dadata_direct.py    # Прямой запрос к DaData API
-├── dadata_mcp.py       # Запрос через OpenAI + MCP DaData
-├── requirements.txt    # Зависимости
-├── .env.example        # Шаблон переменных окружения
-└── README.md
-```
-
-## Получение ключей
-
-### 1. Telegram Bot Token
-
-1. Откройте [@BotFather](https://t.me/BotFather) в Telegram
-2. Отправьте `/newbot`, задайте имя и username
-3. Скопируйте токен вида `123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11`
-
-### 2. DaData API Key и Secret Key
-
-1. Зарегистрируйтесь на [dadata.ru](https://dadata.ru)
-2. Перейдите в [профиль](https://dadata.ru/profile/#info)
-3. Скопируйте **API-ключ** и **Секретный ключ**
-
-> Секретный ключ нужен только для MCP-режима. Для прямого режима достаточно API-ключа.
-
-### 3. OpenAI API Key (для MCP-режима)
-
-1. Зарегистрируйтесь на [platform.openai.com](https://platform.openai.com)
-2. Создайте ключ в разделе [API Keys](https://platform.openai.com/api-keys)
-3. Убедитесь, что на балансе есть средства (MCP-режим использует модель `gpt-4.1-mini`)
-
-> OpenAI API Key нужен только для режима «DaData через AI (MCP)». Прямой режим работает без него.
-
-## Установка и запуск
-
-### Требования
-
-- Python 3.10+
-- pip
-
-### Шаги
-
+## Запуск
 ```bash
-# 1. Клонировать/скопировать проект
-cd inn_checker_bot
-
-# 2. Установить зависимости
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
-
-# 3. Создать .env из шаблона
 cp .env.example .env
-
-# 4. Заполнить .env своими ключами
-nano .env
-
-# 5. Запустить бота
-python bot.py
+python tools/build_reference_db.py
+python -m src.main
 ```
 
-### Docker (опционально)
-
-```dockerfile
-FROM python:3.11-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
-CMD ["python", "bot.py"]
+## ENV
+```env
+TELEGRAM_BOT_TOKEN=
+CHECKO_API_KEY=
+DADATA_API_KEY=
+DADATA_SECRET=
+CACHE_TTL_SECONDS=21600
+STRICT_INN_CHECK=false
+LOG_LEVEL=INFO
 ```
 
-```bash
-docker build -t inn-checker-bot .
-docker run -d --env-file .env --name inn-bot inn-checker-bot
-```
+## UX
+- `/start` и кнопки: `[🏁 Старт][👋 Привет]` + `[🔎 Проверить ИНН]`.
+- Валидация ИНН:
+  - только цифры,
+  - длина 10 или 12,
+  - при `STRICT_INN_CHECK=true` — контрольная сумма.
+- После валидного ИНН: карточка + inline-разделы.
+- На каждом экране фиксированный нижний ряд: **[назад] [домой]**.
 
-## Использование
+## Разделы
+- Финансы: `/v2/finances`
+- Суды: `/v2/legal-cases`
+- Долги: `/v2/enforcements`
+- Проверки: `/v2/inspections`
+- Госзакупки: `/v2/contracts`
 
-1. Откройте бота в Telegram
-2. Отправьте `/start`
-3. Выберите режим:
-   - **DaData напрямую** — быстрый структурированный ответ
-   - **DaData через AI (MCP)** — развёрнутый анализ от нейросети (10–30 сек)
-4. Введите ИНН (один или несколько)
-5. Получите результат, нажмите «Назад в меню» для нового запроса
+## Кэш
+SQLite TTL-кэш в `db/cache.sqlite`.
+TTL:
+- company/entrepreneur/person — 24h
+- finances — 7d
+- contracts — 24h
+- legal-cases — 24h
+- enforcements — 12h
+- inspections — 7d
 
-### Пример ввода
+## Справочники
+`tools/build_reference_db.py` создаёт:
+- `db/reference_data.sqlite`
+- `db/cache.sqlite`
 
-```
-7721581040
-4025456794
-```
+и пытается импортировать ZIP-файлы из `assets/reference_sources/`:
+- `statuses.xlsx.zip`, `okved_2.sql.zip`, `okopf.sql.zip`, `okfs.sql.zip`, `okpd.sql.zip`, `okpd_2.sql.zip`, `account_codes.sql.zip`.
 
-## Карточка компании (прямой режим)
-
-Бот выводит:
-
-- Наименование (полное и краткое)
-- Тип (юр. лицо / ИП) и статус (действующая, ликвидирована и т.д.)
-- Дата регистрации / ликвидации
-- Реквизиты: ИНН, КПП, ОГРН, ОКПО, ОКТМО, ОКАТО
-- Юридический адрес
-- Руководитель (должность, ФИО)
-- Уставный капитал
-- Основной ОКВЭД
-- Телефоны и email
-- Информация о филиалах
-
-## Технические детали
-
-| Компонент | Технология |
-|-----------|-----------|
-| Фреймворк бота | aiogram 3.x |
-| HTTP-клиент | aiohttp |
-| OpenAI SDK | openai (Responses API) |
-| FSM | aiogram FSM (MemoryStorage) |
-| Конфигурация | python-dotenv |
-
-### Обработка ошибок
-
-- Невалидный ИНН → сообщение с описанием ошибки
-- DaData не нашла компанию → «Данные не найдены»
-- Ошибка API (сеть, авторизация) → понятное сообщение пользователю + лог
-- Длинный ответ (>4096 символов) → автоматическое разбиение на части
-
-## Лицензия
-
-MIT
+## [[TBD]]
+- Точные названия некоторых полей в ответах Checko зависят от версии/тарифа API; используется defensive parsing (`dict.get`).
+- Если в `assets/reference_sources/` нет zip-файлов, база справочников создаётся пустой (схема сохранена).

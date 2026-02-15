@@ -117,7 +117,7 @@ async def nav_home(callback: CallbackQuery) -> None:
 
 
 @router.callback_query(F.data.startswith("page:"))
-async def page_handler(callback: CallbackQuery) -> None:
+async def page_handler(callback: CallbackQuery, state: FSMContext) -> None:
     if _aggregator is None:
         await callback.answer("Сервис не инициализирован")
         return
@@ -138,6 +138,7 @@ async def page_handler(callback: CallbackQuery) -> None:
     inn = session.current_inn
 
     if page == "new_inn":
+        await state.set_state(MainState.waiting_inn)
         await callback.message.edit_text("Введите новый ИНН (10 или 12 цифр).", reply_markup=subpage_kb())
         await callback.answer()
         return
@@ -177,6 +178,12 @@ async def page_handler(callback: CallbackQuery) -> None:
     _sessions.save(callback.from_user.id, session)
     await callback.message.edit_text(text, reply_markup=subpage_kb())
     await callback.answer()
+
+
+@router.message()
+async def fallback_message(message: Message, state: FSMContext) -> None:
+    await state.set_state(MainState.waiting_inn)
+    await message.answer("Не понял запрос. Нажмите «🔎 Проверить ИНН» или отправьте ИНН (10 или 12 цифр).")
 
 
 @router.callback_query(F.data == CB["pdf"])

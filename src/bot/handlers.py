@@ -143,7 +143,8 @@ async def page_handler(callback: CallbackQuery) -> None:
         return
 
     if page == "menu":
-        await callback.message.edit_text("Главное меню доступно в reply-клавиатуре ниже.", reply_markup=subpage_kb())
+        await callback.message.edit_text("Главное меню обновлено.", reply_markup=subpage_kb())
+        await callback.message.answer("Выберите действие в меню ниже.", reply_markup=start_kb())
         await callback.answer()
         return
 

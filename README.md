@@ -1,151 +1,68 @@
-# Telegram-бот: Проверка компаний по ИНН
+# Telegram-бот «Проверка контрагента»
 
-Бот для Telegram на Python (aiogram 3.x) с двумя режимами проверки контрагентов по ИНН через сервис DaData.
+Бот на `aiogram v3` проверяет контрагента по ИНН и объединяет данные:
+- **Checko** — юридическая база и риск-контекст.
+- **DaData** — быстрый паспорт/контакты.
 
-## Возможности
-
-| Режим | Описание | Что нужно |
-|-------|----------|-----------|
-| **DaData напрямую** | Прямой HTTP-запрос к API DaData `findById/party`. Возвращает структурированную карточку с реквизитами, адресом, руководством, ОКВЭД, финансами, контактами, филиалами | `DADATA_API_KEY` |
-| **DaData через AI (MCP)** | Нейросеть (GPT-4.1-mini) анализирует компанию через MCP-сервер DaData и выдаёт человекочитаемый отчёт | `DADATA_API_KEY` + `DADATA_SECRET_KEY` + `OPENAI_API_KEY` |
-
-**Интерфейс:**
-- `/start` — приветствие + инлайн-меню выбора режима
-- Валидация ИНН: 10 цифр = юр. лицо, 12 цифр = ИП
-- Пакетная обработка: несколько ИНН через пробел, запятую или с новой строки
-- Кнопка «Назад в меню» после каждого результата
-
-## Структура проекта
-
-```
-inn_checker_bot/
-├── bot.py              # Точка входа, запуск polling
-├── config.py           # Загрузка .env, константы
-├── handlers.py         # Обработчики команд и FSM
-├── keyboards.py        # Инлайн-клавиатуры
-├── validators.py       # Валидация и парсинг ИНН
-├── dadata_direct.py    # Прямой запрос к DaData API
-├── dadata_mcp.py       # Запрос через OpenAI + MCP DaData
-├── requirements.txt    # Зависимости
-├── .env.example        # Шаблон переменных окружения
-└── README.md
-```
-
-## Получение ключей
-
-### 1. Telegram Bot Token
-
-1. Откройте [@BotFather](https://t.me/BotFather) в Telegram
-2. Отправьте `/newbot`, задайте имя и username
-3. Скопируйте токен вида `123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11`
-
-### 2. DaData API Key и Secret Key
-
-1. Зарегистрируйтесь на [dadata.ru](https://dadata.ru)
-2. Перейдите в [профиль](https://dadata.ru/profile/#info)
-3. Скопируйте **API-ключ** и **Секретный ключ**
-
-> Секретный ключ нужен только для MCP-режима. Для прямого режима достаточно API-ключа.
-
-### 3. OpenAI API Key (для MCP-режима)
-
-1. Зарегистрируйтесь на [platform.openai.com](https://platform.openai.com)
-2. Создайте ключ в разделе [API Keys](https://platform.openai.com/api-keys)
-3. Убедитесь, что на балансе есть средства (MCP-режим использует модель `gpt-4.1-mini`)
-
-> OpenAI API Key нужен только для режима «DaData через AI (MCP)». Прямой режим работает без него.
-
-## Установка и запуск
-
-### Требования
-
-- Python 3.10+
-- pip
-
-### Шаги
-
+## Быстрый старт
 ```bash
-# 1. Клонировать/скопировать проект
-cd inn_checker_bot
-
-# 2. Установить зависимости
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
-
-# 3. Создать .env из шаблона
 cp .env.example .env
-
-# 4. Заполнить .env своими ключами
-nano .env
-
-# 5. Запустить бота
 python bot.py
 ```
 
-### Docker (опционально)
-
-```dockerfile
-FROM python:3.11-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
-CMD ["python", "bot.py"]
+## .env
+```env
+TELEGRAM_BOT_TOKEN=
+CHECKO_API_KEY=
+DADATA_API_KEY=
+DADATA_SECRET=
+CACHE_TTL_SECONDS=21600
+STRICT_INN_CHECK=false
+LOG_LEVEL=INFO
 ```
 
-```bash
-docker build -t inn-checker-bot .
-docker run -d --env-file .env --name inn-bot inn-checker-bot
+## Что умеет
+- `/start` + reply-кнопки `🏁 Старт`, `👋 Привет`, `🔎 Проверить ИНН`.
+- Валидация ИНН: только цифры, длина 10/12; опционально контрольная сумма (`STRICT_INN_CHECK=true`).
+- Карточка контрагента + inline-разделы.
+- На всех inline-экранах неизменная нижняя строка: **[назад] [домой]**.
+- Разделы: Финансы, Суды, Долги + базовые остальные.
+- Экспорт карточки в PDF.
+
+## Архитектура
+```
+src/
+  main.py
+  bot/
+    handlers.py
+    keyboards.py
+    states.py
+    formatters.py
+  clients/
+    dadata.py
+    checko.py
+  services/
+    aggregator.py
+    cache.py
+    reference_data.py
+    inn.py
+    settings.py
+  storage/
+    session_store.py
+tools/
+  build_reference_db.py
+tests/
+  test_inn.py
+  test_formatters.py
 ```
 
-## Использование
+## Справочники
+Скрипт `tools/build_reference_db.py` создаёт пустой `reference_data.db` и схему таблиц (`okved2`, `okopf`, `okfs`, `okpd`, `okpd2`, `account_codes`, `statuses`) для последующего импорта ваших SQL/XLSX файлов.
 
-1. Откройте бота в Telegram
-2. Отправьте `/start`
-3. Выберите режим:
-   - **DaData напрямую** — быстрый структурированный ответ
-   - **DaData через AI (MCP)** — развёрнутый анализ от нейросети (10–30 сек)
-4. Введите ИНН (один или несколько)
-5. Получите результат, нажмите «Назад в меню» для нового запроса
-
-### Пример ввода
-
-```
-7721581040
-4025456794
-```
-
-## Карточка компании (прямой режим)
-
-Бот выводит:
-
-- Наименование (полное и краткое)
-- Тип (юр. лицо / ИП) и статус (действующая, ликвидирована и т.д.)
-- Дата регистрации / ликвидации
-- Реквизиты: ИНН, КПП, ОГРН, ОКПО, ОКТМО, ОКАТО
-- Юридический адрес
-- Руководитель (должность, ФИО)
-- Уставный капитал
-- Основной ОКВЭД
-- Телефоны и email
-- Информация о филиалах
-
-## Технические детали
-
-| Компонент | Технология |
-|-----------|-----------|
-| Фреймворк бота | aiogram 3.x |
-| HTTP-клиент | aiohttp |
-| OpenAI SDK | openai (Responses API) |
-| FSM | aiogram FSM (MemoryStorage) |
-| Конфигурация | python-dotenv |
-
-### Обработка ошибок
-
-- Невалидный ИНН → сообщение с описанием ошибки
-- DaData не нашла компанию → «Данные не найдены»
-- Ошибка API (сеть, авторизация) → понятное сообщение пользователю + лог
-- Длинный ответ (>4096 символов) → автоматическое разбиение на части
-
-## Лицензия
-
-MIT
+## ASSUMPTIONS
+- В текущей реализации Checko-запросы сделаны через `GET` (как основной путь).
+- Для раздела «Финансы» используется endpoint `/v2/finance` (по присланному ТЗ).
+- Если `reportlab` недоступен, экспорт возвращает текст как байты (fallback).

@@ -1,42 +1,54 @@
 """Инлайн-клавиатуры бота."""
 
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-# Callback data
-CB_MODE_DIRECT = "mode_direct"
-CB_MODE_MCP = "mode_mcp"
-CB_BACK = "back_to_menu"
+CB_SHOW_REQ = "show_requisites"
+CB_SHOW_FIN = "show_finances"
+CB_SHOW_CASES = "show_cases"
+CB_SHOW_DEBTS = "show_debts"
+CB_SHOW_INSPECTIONS = "show_inspections"
+CB_SHOW_CONTRACTS = "show_contracts"
+CB_BACK = "nav_back"
+CB_HOME = "nav_home"
 
 
 def main_menu_kb() -> InlineKeyboardMarkup:
-    """Главное меню выбора режима."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="ℹ️ Помощь", callback_data=CB_HOME)],
+        ]
+    )
+
+
+def section_menu_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(
-                    text="🔍 DaData напрямую",
-                    callback_data=CB_MODE_DIRECT,
-                ),
+                InlineKeyboardButton(text="Реквизиты", callback_data=CB_SHOW_REQ),
+                InlineKeyboardButton(text="Финансы", callback_data=CB_SHOW_FIN),
             ],
             [
-                InlineKeyboardButton(
-                    text="🤖 DaData через AI (MCP)",
-                    callback_data=CB_MODE_MCP,
-                ),
+                InlineKeyboardButton(text="Суды", callback_data=CB_SHOW_CASES),
+                InlineKeyboardButton(text="Долги", callback_data=CB_SHOW_DEBTS),
+            ],
+            [
+                InlineKeyboardButton(text="Проверки", callback_data=CB_SHOW_INSPECTIONS),
+                InlineKeyboardButton(text="Госзакупки", callback_data=CB_SHOW_CONTRACTS),
+            ],
+            [
+                InlineKeyboardButton(text="⬅️ Назад", callback_data=CB_BACK),
+                InlineKeyboardButton(text="🏠 Домой", callback_data=CB_HOME),
             ],
         ]
     )
 
 
-def back_menu_kb() -> InlineKeyboardMarkup:
-    """Кнопка «Назад в меню»."""
+def back_home_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(
-                    text="↩️ Назад в меню",
-                    callback_data=CB_BACK,
-                ),
-            ],
+                InlineKeyboardButton(text="⬅️ Назад", callback_data=CB_BACK),
+                InlineKeyboardButton(text="🏠 Домой", callback_data=CB_HOME),
+            ]
         ]
     )

@@ -91,6 +91,9 @@ async def nav_back(callback: CallbackQuery) -> None:
         await callback.answer("Сервис не инициализирован")
         return
     session = _sessions.get(callback.from_user.id)
+    if not session.stack:
+        await callback.answer("Сначала проверьте ИНН")
+        return
     if len(session.stack) > 1:
         session.stack.pop()
     _sessions.save(callback.from_user.id, session)
@@ -115,6 +118,13 @@ async def nav_home(callback: CallbackQuery) -> None:
 
 @router.callback_query(F.data.startswith("page:"))
 async def page_handler(callback: CallbackQuery) -> None:
+    if _aggregator is None:
+        await callback.answer("Сервис не инициализирован")
+        return
+    if not callback.data:
+        await callback.answer("Раздел недоступен")
+        return
+
     page = callback.data.split(":", 1)[1]
     if _sessions is None:
         await callback.answer("Сервис не инициализирован")
@@ -137,8 +147,10 @@ async def page_handler(callback: CallbackQuery) -> None:
         await callback.answer()
         return
 
+    checko_data = _extract_checko_data(session.extra)
+
     if page == "successor":
-        text = f"Правопреемник: {(session.extra.get('checko') or {}).get('Правопреемник', 'нет данных')}"
+        text = f"Правопреемник: {checko_data.get('Правопреемник', 'нет данных')}"
     elif page == "contacts":
         text = "Все контакты из карточки и источников уже собраны в основном экране."
     elif page == "authorities":
@@ -148,11 +160,11 @@ async def page_handler(callback: CallbackQuery) -> None:
     elif page == "cases":
         text = _dump("Суды", await checko.fetch_legal_cases(inn))
     elif page == "founders":
-        text = _dump("Учредители", (session.extra.get("checko") or {}).get("Учред"))
+        text = _dump("Учредители", checko_data.get("Учред"))
     elif page == "contracts":
         text = _dump("Госзакупки", await checko.fetch_contracts(inn))
     elif page == "taxes":
-        text = _dump("Налоги", (session.extra.get("checko") or {}).get("Налоги"))
+        text = _dump("Налоги", checko_data.get("Налоги"))
     elif page == "debts":
         text = _dump("Долги", await checko.fetch_enforcements(inn))
     elif page == "inspections":
@@ -189,6 +201,16 @@ def _dump(title: str, payload: object) -> str:
     if len(text) > 3800:
         text = text[:3800] + "\n..."
     return f"{title}:\n<pre>{text}</pre>"
+
+
+def _extract_checko_data(extra: dict[str, object]) -> dict[str, object]:
+    payload = extra.get("checko")
+    if not isinstance(payload, dict):
+        return {}
+    nested = payload.get("data")
+    if isinstance(nested, dict):
+        return nested
+    return payload
 
 
 def _make_pdf(text: str) -> bytes:

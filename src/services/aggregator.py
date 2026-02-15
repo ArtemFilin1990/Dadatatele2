@@ -59,7 +59,7 @@ class AggregatorService:
         checko_data = (checko_payload or {}).get("data") or (checko_payload or {})
         dadata_data = (dadata_payload or {}).get("data") or {}
 
-        if not checko_data and not dadata_payload:
+        if not dadata_payload:
             return None, {"entity": entity}
 
         checko_name = _as_str(checko_data.get("НаимСокр") or checko_data.get("name"), "")

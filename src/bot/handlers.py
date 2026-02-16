@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+from html import escape
 from datetime import datetime
 
 from aiogram import F, Router
@@ -152,7 +153,8 @@ async def page_handler(callback: CallbackQuery, state: FSMContext) -> None:
     checko_data = _extract_checko_data(session.extra)
 
     if page == "successor":
-        text = f"Правопреемник: {checko_data.get('Правопреемник', 'нет данных')}"
+        successor = checko_data.get("Правопреемник", "нет данных")
+        text = f"Правопреемник: {escape(str(successor))}"
     elif page == "contacts":
         text = "Все контакты из карточки и источников уже собраны в основном экране."
     elif page == "authorities":
@@ -206,6 +208,7 @@ def _dump(title: str, payload: object) -> str:
     if not payload:
         return f"{title}: нет данных в текущем тарифе/эндпоинте."
     text = json.dumps(payload, ensure_ascii=False, indent=2, default=str)
+    text = escape(text)
     if len(text) > 3800:
         text = text[:3800] + "\n..."
     return f"{title}:\n<pre>{text}</pre>"

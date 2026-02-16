@@ -17,7 +17,7 @@ def _first_non_empty(*keys: str) -> str:
     return ""
 
 
-TELEGRAM_BOT_TOKEN: str = _first_non_empty("TELEGRAM_BOT_TOKEN")
+TELEGRAM_BOT_TOKEN: str = _first_non_empty("TELEGRAM_BOT_TOKEN", "TG_BOT_TOKEN")
 DADATA_API_KEY: str = _first_non_empty("DADATA_API_KEY", "DADATA_API_TOKEN")
 DADATA_SECRET_KEY: str = _first_non_empty("DADATA_SECRET_KEY", "DADATA_API_SECRET")
 OPENAI_API_KEY: str = _first_non_empty("OPENAI_API_KEY")
@@ -51,7 +51,7 @@ except ValueError:
     sys.exit(1)
 
 _required = {
-    "TELEGRAM_BOT_TOKEN": TELEGRAM_BOT_TOKEN,
+    "TELEGRAM_BOT_TOKEN (или TG_BOT_TOKEN)": TELEGRAM_BOT_TOKEN,
     "DADATA_API_KEY (или DADATA_API_TOKEN)": DADATA_API_KEY,
 }
 _missing = [k for k, v in _required.items() if not v]

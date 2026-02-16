@@ -24,7 +24,7 @@ def _as_bool(value: str) -> bool:
 
 def get_settings() -> Settings:
     load_dotenv()
-    token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip() or os.getenv("TG_BOT_TOKEN", "").strip()
     checko_key = os.getenv("CHECKO_API_KEY", "").strip()
     dadata_key = os.getenv("DADATA_API_KEY", "").strip()
     dadata_secret = os.getenv("DADATA_SECRET", "").strip()

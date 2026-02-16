@@ -16,6 +16,7 @@ python bot.py
 ## .env
 ```env
 TELEGRAM_BOT_TOKEN=
+TG_BOT_TOKEN=  # optional alias for TELEGRAM_BOT_TOKEN
 CHECKO_API_KEY=
 DADATA_API_KEY=
 DADATA_SECRET=
@@ -27,6 +28,7 @@ LOG_LEVEL=INFO
 ## Что умеет
 - `/start` + reply-кнопки `🏁 Старт`, `👋 Привет`, `🔎 Проверить ИНН`.
 - Валидация ИНН: только цифры, длина 10/12; опционально контрольная сумма (`STRICT_INN_CHECK=true`).
+- Токен бота читается из `TELEGRAM_BOT_TOKEN` или совместимого алиаса `TG_BOT_TOKEN`.
 - Карточка контрагента + inline-разделы.
 - На всех inline-экранах неизменная нижняя строка: **[назад] [домой]**.
 - Разделы: Финансы, Суды, Долги + базовые остальные.

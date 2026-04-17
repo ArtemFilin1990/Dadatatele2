@@ -1,5 +1,0 @@
-meta:
-  name: dadatatele2
-  python_version: "3.11"
-
-run: python bot.py

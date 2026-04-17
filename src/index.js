@@ -4,17 +4,8 @@
  */
 
 export default {
-  async fetch(request, env, ctx) {
-    const url = new URL(request.url);
-
-    // Route handling
-    if (url.pathname === '/') {
-      return new Response('B24 Catalog API', {
-        headers: { 'Content-Type': 'text/plain' },
-      });
-    }
-
-    // Default 404 response
-    return new Response('Not Found', { status: 404 });
+  async fetch(request, env) {
+    // Serve static assets from the public/ directory
+    return env.ASSETS.fetch(request);
   },
 };

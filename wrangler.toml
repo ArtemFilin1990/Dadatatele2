@@ -2,6 +2,9 @@ name = "b24-catalog"
 main = "src/index.js"
 compatibility_date = "2024-01-01"
 
+[assets]
+directory = "public"
+
 # Uncomment to use KV namespace
 # [[kv_namespaces]]
 # binding = "KV"

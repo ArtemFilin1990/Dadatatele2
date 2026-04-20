@@ -1,14 +1,23 @@
-/**
- * B24 Catalog Worker
- * Cloudflare Workers entry point
- */
-
 export default {
   async fetch(request, env) {
-    // Serve static assets from the public/ directory
-    if (!env.ASSETS) {
-      return new Response('Assets not configured', { status: 500 });
+    const url = new URL(request.url);
+
+    if (url.pathname === "/api/ping") {
+      return Response.json({
+        ok: true,
+        app: "b24-catalog",
+        time: new Date().toISOString(),
+      });
     }
+
+    if (url.pathname === "/install") {
+      return env.ASSETS.fetch(new Request(`${url.origin}/install.html`, request));
+    }
+
+    if (url.pathname === "/" || url.pathname === "/app") {
+      return env.ASSETS.fetch(new Request(`${url.origin}/index.html`, request));
+    }
+
     return env.ASSETS.fetch(request);
   },
 };

@@ -5,20 +5,76 @@ import numpy as np
 import pandas as pd
 
 
-def load_references(input_dir: str):
-    ref_gost_iso_path = os.path.join(input_dir, 'catalog_full_brands_aprom_enriched.xlsx - REF_GOST_ISO_размеры.csv')
-    ref_suffix_path = os.path.join(input_dir, 'catalog_full_brands_aprom_enriched.xlsx - REF_ISO_суффиксы.csv')
+EXCLUDE_SHEET_KEYWORDS = ['REF_', 'SCHEMA', 'DICT_', 'CROSSREF_', 'RAW_']
 
-    if os.path.exists(ref_gost_iso_path):
-        ref_sizes = pd.read_csv(ref_gost_iso_path, dtype=str)
+
+def read_reference_sheet(input_dir: str, sheet_name: str) -> pd.DataFrame:
+    csv_name = f'catalog_full_brands_aprom_enriched.xlsx - {sheet_name}.csv'
+    csv_path = os.path.join(input_dir, csv_name)
+    if os.path.exists(csv_path):
+        return pd.read_csv(csv_path, dtype=str)
+
+    for workbook_name in ['catalog_full_brands_aprom_enriched.xlsx', 'catalog_full_brands_aprom_patch.xlsx']:
+        workbook_path = os.path.join(input_dir, workbook_name)
+        if not os.path.exists(workbook_path):
+            continue
+        try:
+            excel = pd.ExcelFile(workbook_path)
+            if sheet_name in excel.sheet_names:
+                return pd.read_excel(workbook_path, sheet_name=sheet_name, dtype=str)
+        except Exception:
+            continue
+
+    return pd.DataFrame()
+
+
+def iter_data_frames(input_dir: str):
+    all_csvs = glob.glob(os.path.join(input_dir, '*.csv'))
+    exclude_keywords = ['REF_', 'SCHEMA', 'DICT_', 'CROSSREF_', 'MASTER_PRODUCTS', 'RAW_']
+    for csv_path in all_csvs:
+        if any(x in os.path.basename(csv_path) for x in exclude_keywords):
+            continue
+        try:
+            yield csv_path, pd.read_csv(csv_path, dtype=str, low_memory=False)
+        except Exception as e:
+            print(f'Ошибка чтения {csv_path}: {e}')
+
+    master_csv = os.path.join(input_dir, 'catalog_full_brands_aprom_enriched.xlsx - MASTER_PRODUCTS.csv')
+    if os.path.exists(master_csv):
+        try:
+            yield master_csv, pd.read_csv(master_csv, dtype=str, low_memory=False)
+        except Exception as e:
+            print(f'Ошибка чтения {master_csv}: {e}')
+
+    for workbook_name in ['catalog_full_brands_aprom_enriched.xlsx', 'catalog_full_brands_aprom_patch.xlsx']:
+        workbook_path = os.path.join(input_dir, workbook_name)
+        if not os.path.exists(workbook_path):
+            continue
+        try:
+            excel = pd.ExcelFile(workbook_path)
+        except Exception as e:
+            print(f'Ошибка чтения {workbook_path}: {e}')
+            continue
+
+        for sheet_name in excel.sheet_names:
+            if any(x in sheet_name for x in EXCLUDE_SHEET_KEYWORDS):
+                continue
+            try:
+                sheet_df = pd.read_excel(workbook_path, sheet_name=sheet_name, dtype=str)
+                yield f'{workbook_name}:{sheet_name}', sheet_df
+            except Exception as e:
+                print(f'Ошибка чтения {workbook_name}:{sheet_name}: {e}')
+
+
+def load_references(input_dir: str):
+    ref_sizes = read_reference_sheet(input_dir, 'REF_GOST_ISO_размеры')
+    if not ref_sizes.empty:
         for col in ['d', 'D', 'B', 'Масса']:
             if col in ref_sizes.columns:
                 ref_sizes[col] = pd.to_numeric(ref_sizes[col].astype(str).str.replace(',', '.'), errors='coerce')
-    else:
-        ref_sizes = pd.DataFrame()
 
-    if os.path.exists(ref_suffix_path):
-        ref_suffixes = pd.read_csv(ref_suffix_path, dtype=str)
+    ref_suffixes = read_reference_sheet(input_dir, 'REF_ISO_суффиксы')
+    if not ref_suffixes.empty:
         ref_suffixes.columns = ['Код', 'Расшифровка']
     else:
         ref_suffixes = pd.DataFrame(columns=['Код', 'Расшифровка'])
@@ -47,14 +103,6 @@ def build_catalogs(input_dir: str, output_file: str):
             if iso_num and iso_num != 'nan':
                 iso_dict[iso_num] = {'analog': gost_num, **data}
 
-    all_csvs = glob.glob(os.path.join(input_dir, '*.csv'))
-    exclude_keywords = ['REF_', 'SCHEMA', 'DICT_', 'CROSSREF_', 'MASTER_PRODUCTS', 'RAW_']
-    data_files = [f for f in all_csvs if not any(x in os.path.basename(f) for x in exclude_keywords)]
-
-    master_path = os.path.join(input_dir, 'catalog_full_brands_aprom_enriched.xlsx - MASTER_PRODUCTS.csv')
-    if os.path.exists(master_path):
-        data_files.append(master_path)
-
     gost_rows = []
     iso_rows = []
     prefixes = set()
@@ -65,22 +113,12 @@ def build_catalogs(input_dir: str, output_file: str):
         'd_mm', 'D_mm', 'B_mm', 'mass_kg', 'interface', 'Аналог'
     ]
 
-    for file in data_files:
-        try:
-            df = pd.read_csv(file, dtype=str, low_memory=False)
-        except Exception as e:
-            print(f'Ошибка чтения {file}: {e}')
-            continue
-
+    for _, df in iter_data_frames(input_dir):
         missing_cols = [c for c in columns_to_extract if c not in df.columns]
         for mc in missing_cols:
             df[mc] = np.nan
 
         for _, row in df.iterrows():
-            interface = str(row['interface']).strip().upper()
-            if interface not in ['ГОСТ', 'ISO']:
-                continue
-
             brand = str(row['Бренд']).strip() if pd.notna(row['Бренд']) else ''
             prod = str(row['продукция']).strip() if pd.notna(row['продукция']) else 'Подшипник'
             pref = str(row['префикс']).strip() if pd.notna(row['префикс']) else ''
@@ -94,6 +132,17 @@ def build_catalogs(input_dir: str, output_file: str):
 
             if not num or num == 'nan':
                 continue
+
+            interface = str(row['interface']).strip().upper()
+            if interface not in ['ГОСТ', 'ISO']:
+                if num in gost_dict:
+                    interface = 'ГОСТ'
+                elif num in iso_dict:
+                    interface = 'ISO'
+                elif any('А' <= ch <= 'я' or ch == 'Ё' or ch == 'ё' for ch in brand):
+                    interface = 'ГОСТ'
+                else:
+                    interface = 'ISO'
 
             d_val = pd.to_numeric(str(row['d_mm']).replace(',', '.'), errors='coerce')
             D_val = pd.to_numeric(str(row['D_mm']).replace(',', '.'), errors='coerce')
@@ -140,8 +189,9 @@ def build_catalogs(input_dir: str, output_file: str):
         'd мм', 'D мм', 'B мм', 'M кг'
     ]
 
-    df_gost = pd.DataFrame(gost_rows, columns=out_cols).drop_duplicates()
-    df_iso = pd.DataFrame(iso_rows, columns=out_cols).drop_duplicates()
+    dedup_key = ['Бренд', 'префикс', 'номер', 'суффикс', 'Аналог']
+    df_gost = pd.DataFrame(gost_rows, columns=out_cols).drop_duplicates(subset=dedup_key)
+    df_iso = pd.DataFrame(iso_rows, columns=out_cols).drop_duplicates(subset=dedup_key)
 
     schema_data = [
         ['Бренд', 'text', 'yes', 'Бренд источника'],
@@ -169,7 +219,7 @@ def build_catalogs(input_dir: str, output_file: str):
         df_suffix = found_suffixes
         df_suffix['Расшифровка'] = ''
 
-    with pd.ExcelWriter(output_file, engine='xlsxwriter') as writer:
+    with pd.ExcelWriter(output_file) as writer:
         df_gost.to_excel(writer, sheet_name='GOST', index=False)
         df_iso.to_excel(writer, sheet_name='ISO', index=False)
         df_schema.to_excel(writer, sheet_name='SCHEMA', index=False)

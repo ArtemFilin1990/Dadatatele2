@@ -45,6 +45,7 @@ Maintain a reliable bearing-catalog compiler workflow that produces one validate
 
 ## Validation commands
 Run relevant checks before finishing:
+- `pip install -r requirements.txt`
 - `python -m py_compile compiler.py`
 - `python compiler.py` (when required inputs/deps are available)
 

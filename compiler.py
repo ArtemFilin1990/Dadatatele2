@@ -218,7 +218,7 @@ def build_catalogs(input_dir: str, output_file: str):
         df_suffix = found_suffixes
         df_suffix['Расшифровка'] = ''
 
-    with pd.ExcelWriter(output_file, engine='xlsxwriter') as writer:
+    with pd.ExcelWriter(output_file) as writer:
         df_gost.to_excel(writer, sheet_name='GOST', index=False)
         df_iso.to_excel(writer, sheet_name='ISO', index=False)
         df_schema.to_excel(writer, sheet_name='SCHEMA', index=False)

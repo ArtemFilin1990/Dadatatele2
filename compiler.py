@@ -189,8 +189,9 @@ def build_catalogs(input_dir: str, output_file: str):
         'd мм', 'D мм', 'B мм', 'M кг'
     ]
 
-    df_gost = pd.DataFrame(gost_rows, columns=out_cols).drop_duplicates()
-    df_iso = pd.DataFrame(iso_rows, columns=out_cols).drop_duplicates()
+    dedup_key = ['Бренд', 'префикс', 'номер', 'суффикс', 'Аналог']
+    df_gost = pd.DataFrame(gost_rows, columns=out_cols).drop_duplicates(subset=dedup_key)
+    df_iso = pd.DataFrame(iso_rows, columns=out_cols).drop_duplicates(subset=dedup_key)
 
     schema_data = [
         ['Бренд', 'text', 'yes', 'Бренд источника'],

@@ -180,6 +180,8 @@ def build_catalogs(input_dir: str, output_file: str) -> None:
     if not input_path.exists():
         raise FileNotFoundError(f'Input directory not found: {input_path}')
 
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
     ref_sizes, ref_suffixes = load_references(input_path)
 
     gost_dict: dict[str, dict[str, object]] = {}
@@ -336,4 +338,4 @@ def build_catalogs(input_dir: str, output_file: str) -> None:
 
 
 if __name__ == '__main__':
-    build_catalogs(input_dir='.', output_file='result_catalog.xlsx')
+    build_catalogs(input_dir='.', output_file='clean/result_catalog.xlsx')
